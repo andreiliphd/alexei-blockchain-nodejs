@@ -11,6 +11,7 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
+const CryptoJS = require('crypto-js');
 
 class Blockchain {
 
@@ -65,15 +66,16 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
             block.height = self.height+1;
-            if (self.height > -1) {
-                block.previousBlockHash = self.chain[self.height].hash ? self.chain[self.height].hash : "";
+            if (block.height > 0) {
+                block.previousBlockHash = self.chain[self.height].hash;
             }
-            block.date = new Date().getTime().toString().slice(0,-3);
+            block.time = new Date().getTime().toString().slice(0,-3);
             block.hash = SHA256(JSON.stringify({height: block.height, previousBlockHash: block.previousBlockHash,
-                date: block.date, body: block.body}));
+                time: block.time, body: block.body}));
             self.chain.push(block);
             self.height = ++self.height;
-            if ((self.chain.length - 1) == self.height) {
+            let isChainValid = await self.validateChain().catch(e => e);
+            if ((self.chain.length - 1) == block.height) {
                 resolve(true);
             } else {
                 reject(false);
@@ -121,13 +123,13 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let messageTime = parseInt(message.split(':')[1]);
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-            console.log(currentTime, messageTime);
-            let fiveMinutePassed = (currentTime - messageTime) > 60 * 60 * 5;
+            let fiveMinutePassed = (currentTime - messageTime) > 60 * 5;
             let signatureVerification = bitcoinMessage.verify(message, address, signature);
             if (!fiveMinutePassed && signatureVerification) {
                 let block = new BlockClass.Block({data: {address: address, message: message,
                         signature: signature, star: star }});
                 await self._addBlock(block);
+                console.log("Hash of the block ", block.hash.toString(CryptoJS.enc.Hex));
                 resolve(block);
             } else {
                 reject(false);
@@ -184,7 +186,6 @@ class Blockchain {
             for (const block of self.chain) {
                 let body = await block.getBData().then( result => result ).catch( e =>
                     {console.log("The following error has happened: ", e); return false;} );
-                console.log(body?"data" in body:"Genesis");
                 if (body && "data" in body && "address" in body["data"]) {
                     if (body["data"]["address"]==address)
                         stars.push(body["data"]["star"]);
@@ -211,19 +212,15 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let counter = 0;
             for (const block of self.chain) {
-                if (!block.validate()) {
-                    errorLog.push("The following block is invalid ${block.hash}.");
+                let isBlockValid = await block.validate().catch( e => false );
+                if (!isBlockValid) {
+                    errorLog.push(`The following block is invalid ${block.hash}.`);
                 }
-                if (block.height == 1) {
-                    break;
-                } else {
-                    let isBlockValid = block.hash == self.chain[counter-1].hash;
-                    if (!isBlockValid) {
-                        errorLog.push("The chain is broken at block with hash ${block.hash}" +
-                            "and height ${block.height}.");
-                    }
+                if (block.height>1) {
+                    let isChainValid = block.previousBlockHash.toString(CryptoJS.enc.Hex) == self.chain[counter-1].hash.toString(CryptoJS.enc.Hex);
                 }
-                counter++;
+                counter = counter + 1;
+            console.log("Error log during validation of chain ", errorLog);
             if (!errorLog) {
                 resolve(true);
             } else {

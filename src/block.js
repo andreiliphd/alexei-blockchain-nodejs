@@ -11,6 +11,7 @@
 
 const SHA256 = require('crypto-js/sha256');
 const hex2ascii = require('hex2ascii');
+const CryptoJS = require('crypto-js');
 
 class Block {
 
@@ -39,10 +40,10 @@ class Block {
         let self = this;
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
-            let hash = self.hash;
+            let hash = self.hash.toString(CryptoJS.enc.Hex);
             // Recalculate the hash of the Block
             let hashCheck = SHA256(JSON.stringify({height: self.height, previousBlockHash: self.previousBlockHash,
-                date: self.date, body: self.body}));
+                time: self.time, body: self.body})).toString(CryptoJS.enc.Hex);
             // Comparing if the hashes changed
             if (hash==hashCheck) {
                 // Returning the Block is not valid
@@ -75,7 +76,6 @@ class Block {
             dataDecoded = JSON.parse(dataDecoded);
             // Resolve with the data if the object isn't the Genesis block
             if (self.height>0) {
-                console.log("accepted")
                 resolve(dataDecoded);
             } else {
                 reject(false);
