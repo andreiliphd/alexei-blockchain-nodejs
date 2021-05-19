@@ -71,7 +71,7 @@ class Blockchain {
             }
             block.time = new Date().getTime().toString().slice(0,-3);
             block.hash = SHA256(JSON.stringify({height: block.height, previousBlockHash: block.previousBlockHash,
-                time: block.time, body: block.body}));
+                time: block.time, body: block.body})).toString(CryptoJS.enc.Hex);
             self.chain.push(block);
             self.height = ++self.height;
             let isChainValid = await self.validateChain().catch(e => e);
@@ -129,7 +129,7 @@ class Blockchain {
                 let block = new BlockClass.Block({data: {address: address, message: message,
                         signature: signature, star: star }});
                 await self._addBlock(block);
-                console.log("Hash of the block ", block.hash.toString(CryptoJS.enc.Hex));
+                console.log("Hash of the block ", block.hash);
                 resolve(block);
             } else {
                 reject(false);
@@ -191,7 +191,7 @@ class Blockchain {
                         stars.push(body["data"]["star"]);
                 }
             }
-            if (stars) {
+            if (stars.length>0) {
                 resolve(stars);
             } else {
                 reject(false);
@@ -217,14 +217,14 @@ class Blockchain {
                     errorLog.push(`The following block is invalid ${block.hash}.`);
                 }
                 if (block.height>1) {
-                    let isChainValid = block.previousBlockHash.toString(CryptoJS.enc.Hex) == self.chain[counter-1].hash.toString(CryptoJS.enc.Hex);
+                    let isChainValid = block.previousBlockHash == self.chain[counter-1].hash;
                 }
                 counter = counter + 1;
             console.log("Error log during validation of chain ", errorLog);
-            if (!errorLog) {
-                resolve(true);
+            if (errorLog.length>0) {
+                resolve(errorLog);
             } else {
-                reject(false);
+                reject(errorLog);
             }
             }
 
