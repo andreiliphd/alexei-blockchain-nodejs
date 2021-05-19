@@ -72,10 +72,10 @@ class Blockchain {
             block.time = new Date().getTime().toString().slice(0,-3);
             block.hash = SHA256(JSON.stringify({height: block.height, previousBlockHash: block.previousBlockHash,
                 time: block.time, body: block.body})).toString(CryptoJS.enc.Hex);
-            self.chain.push(block);
-            self.height = self.height+1;
             let isChainValid = await self.validateChain().catch(e => e);
-            if ((self.chain.length - 1) == block.height && isChainValid.length == 0) {
+            if (isChainValid.length == 0) {
+                self.chain.push(block);
+                self.height = self.height+1;
                 resolve(true);
             } else {
                 reject(false);
@@ -126,7 +126,6 @@ class Blockchain {
                 let block = new BlockClass.Block({data: {address: address, message: message,
                         signature: signature, star: star }});
                 await self._addBlock(block);
-                console.log("Hash of the block ", block.hash);
                 resolve(block);
             } else {
                 reject(false);
@@ -180,8 +179,7 @@ class Blockchain {
         let stars = [];
         return new Promise(async (resolve, reject) => {
             for (const block of self.chain) {
-                let body = await block.getBData().then( result => result ).catch( e =>
-                    {console.log("The following error has happened: ", e); return false;} );
+                let body = await block.getBData().then( result => result ).catch( e => false );
                 if (body && "data" in body && "address" in body["data"] && body["data"]["address"]==address) {
                     stars.push(body["data"]["star"]);
                 }
@@ -211,15 +209,12 @@ class Blockchain {
                     errorLog.push(`The following block is invalid ${block.hash}.`);
                 }
                 if (block.height > 1) {
-                    console.log(block);
-                    console.log(self.chain[counter - 1]);
                     let isChainValid = block.previousBlockHash == self.chain[counter - 1].hash;
                     if (!isChainValid)
                         errorLog.push(`Chain with hashes ${block.previousBlockHash} and ${self.chain[counter-1].hash} are invalid.`);
                 }
                 counter = counter + 1;
             }
-            console.log("Error log during validation of chain ", errorLog);
             if (errorLog.length>0) {
                 resolve(errorLog);
             } else {
