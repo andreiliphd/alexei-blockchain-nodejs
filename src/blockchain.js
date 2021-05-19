@@ -73,16 +73,13 @@ class Blockchain {
             block.hash = SHA256(JSON.stringify({height: block.height, previousBlockHash: block.previousBlockHash,
                 time: block.time, body: block.body})).toString(CryptoJS.enc.Hex);
             self.chain.push(block);
-            self.height = ++self.height;
+            self.height = self.height+1;
             let isChainValid = await self.validateChain().catch(e => e);
-            if ((self.chain.length - 1) == block.height) {
+            if ((self.chain.length - 1) == block.height && isChainValid.length == 0) {
                 resolve(true);
             } else {
                 reject(false);
             }
-
-
-           
         });
     }
 
@@ -152,7 +149,6 @@ class Blockchain {
             } else {
                 reject(false);
             }
-           
         });
     }
 
@@ -186,9 +182,8 @@ class Blockchain {
             for (const block of self.chain) {
                 let body = await block.getBData().then( result => result ).catch( e =>
                     {console.log("The following error has happened: ", e); return false;} );
-                if (body && "data" in body && "address" in body["data"]) {
-                    if (body["data"]["address"]==address)
-                        stars.push(body["data"]["star"]);
+                if (body && "data" in body && "address" in body["data"] && body["data"]["address"]==address) {
+                    stars.push(body["data"]["star"]);
                 }
             }
             if (stars.length>0) {
@@ -196,7 +191,6 @@ class Blockchain {
             } else {
                 reject(false);
             }
-            
         });
     }
 
@@ -212,26 +206,27 @@ class Blockchain {
         return new Promise(async (resolve, reject) => {
             let counter = 0;
             for (const block of self.chain) {
-                let isBlockValid = await block.validate().catch( e => false );
+                let isBlockValid = await block.validate().catch(e => false);
                 if (!isBlockValid) {
                     errorLog.push(`The following block is invalid ${block.hash}.`);
                 }
-                if (block.height>1) {
-                    let isChainValid = block.previousBlockHash == self.chain[counter-1].hash;
+                if (block.height > 1) {
+                    console.log(block);
+                    console.log(self.chain[counter - 1]);
+                    let isChainValid = block.previousBlockHash == self.chain[counter - 1].hash;
+                    if (!isChainValid)
+                        errorLog.push(`Chain with hashes ${block.previousBlockHash} and ${self.chain[counter-1].hash} are invalid.`);
                 }
                 counter = counter + 1;
+            }
             console.log("Error log during validation of chain ", errorLog);
             if (errorLog.length>0) {
                 resolve(errorLog);
             } else {
                 reject(errorLog);
             }
-            }
-
-            
         });
     }
-
 }
 
 module.exports.Blockchain = Blockchain;   

@@ -40,7 +40,7 @@ class Block {
         let self = this;
         return new Promise((resolve, reject) => {
             // Save in auxiliary variable the current block hash
-            let hash = self.hash.toString(CryptoJS.enc.Hex);
+            let hash = self.hash;
             // Recalculate the hash of the Block
             let hashCheck = SHA256(JSON.stringify({height: self.height, previousBlockHash: self.previousBlockHash,
                 time: self.time, body: self.body})).toString(CryptoJS.enc.Hex);
@@ -52,7 +52,6 @@ class Block {
                 // Returning the Block is valid
                 reject(false);
             }
-
         });
     }
 

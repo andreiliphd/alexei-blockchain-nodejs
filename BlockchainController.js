@@ -119,7 +119,7 @@ class BlockchainController {
             if(req.params.address) {
                 const address = req.params.address;
                 try {
-                    let stars = await this.blockchain.getStarsByWalletAddress(address);
+                    let stars = await this.blockchain.getStarsByWalletAddress(address).catch(e => e);
                     if(stars){
                         return res.status(200).json(stars);
                     } else {
